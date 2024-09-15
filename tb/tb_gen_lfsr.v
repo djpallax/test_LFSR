@@ -15,6 +15,7 @@ reg i_soft_reset ;
 reg [7:0] i_seed ;
 wire [7:0] o_LFSR;
 
+//top_lfsr dut (
 generador_lfsr uut (
     .clk(clk),
     .i_valid(i_valid),
@@ -37,31 +38,36 @@ initial begin
     // Inicializo las señales
     clk = 0;
     i_valid = 1;    // Que empiece haciendo algo
-    i_rst = 0;
+    i_rst = 1;
     i_soft_reset = 0;
     i_seed = 8'h00;
     i = 0;
     j = 0;
+    
+    @(posedge clk);
+    i_rst = 0;
+    @(posedge clk);
 
     // Genero un reset entre 1us y 250us
     async_reset;
+    //i_rst = 0;
 
-    #2000;  // Espero 20 clocks como para que haga algo
+    repeat(50) @(posedge clk);
 
     // Cambio el seed
     change_seed(8'h7F);
 
-    #500;   // Espero 5 clocks (change seed no altera el funcionamiento)
+    repeat(2) @(posedge clk);
 
     // Genero un soft reset entre 1us y 250us
     soft_reset;
 
-    #2000;  // Veo que cambia con el seed
+    repeat(50) @(posedge clk);
 
     // Random valid al final por el bucle limitado
     random_valid;
 
-    #100;
+    repeat(50) @(posedge clk);
 
     // Verificar periodicidad:
     i_valid = 1;
@@ -84,7 +90,8 @@ task async_reset;
         i_rst = 1;
         $display("Delay establecido en %d ns", random_delay);
         #random_delay;  // Delay random
-        @(posedge clk) i_rst = 0;  // Suelto el reset cuando venga el clk
+        @(posedge clk);
+        i_rst = 0;  // Suelto el reset cuando venga el clk
     end
 endtask
 
@@ -103,12 +110,14 @@ task soft_reset;    // Similar a async_reset
         i_soft_reset = 1;
         $display("Delay establecido en %d ns", soft_delay);
         #soft_delay;
-        @(posedge clk) i_soft_reset = 0;
+        @(posedge clk);
+        i_soft_reset = 0;
     end
 endtask
 
 task random_valid;
     begin
+        //integer i;
         for (i = 0; i < 1000; i = i + 1) begin  // 1000 veces
             @(posedge clk);         // Delay de clk
             i_valid = $random % 2;  // Random entre 0 y 1
